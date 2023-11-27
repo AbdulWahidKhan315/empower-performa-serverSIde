@@ -32,6 +32,7 @@ async function run() {
 
         const usersCollection = client.db('empowerPerformaDB').collection('allUsers');
         const paymentsCollection = client.db('empowerPerformaDB').collection('payments');
+        const workSheetsCollection = client.db('empowerPerformaDB').collection('workSheets');
 
         //user related api
 
@@ -121,6 +122,20 @@ async function run() {
             const payment = req.body;
             const paymentResult = await paymentsCollection.insertOne(payment);
             res.send(paymentResult);
+        })
+
+        //works relate api
+
+        app.get('/works/:email',async(req,res)=>{
+            const query = {email: req.params.email};
+            const result = await workSheetsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post('/works',async(req,res)=>{
+            const works = req.body;
+            const workResult = await workSheetsCollection.insertOne(works);
+            res.send(workResult);
         })
 
         // Send a ping to confirm a successful connection
