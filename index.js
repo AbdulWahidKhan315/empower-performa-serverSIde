@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 require('dotenv').config()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 
@@ -30,6 +31,7 @@ async function run() {
         await client.connect();
 
         const usersCollection = client.db('empowerPerformaDB').collection('allUsers');
+        const paymentsCollection = client.db('empowerPerformaDB').collection('payments');
 
         //user related api
         app.post('/allusers', async (req, res) => {
@@ -44,34 +46,63 @@ async function run() {
         });
 
         //HR related api
-        app.get('/users/HR/:email',async(req,res)=>{
+        app.get('/users/HR/:email', async (req, res) => {
             const email = req.params.email;
-            const query = {email: email};
+            const query = { email: email };
             const user = await usersCollection.findOne(query);
             let hr = false;
-            if(user){
+            if (user) {
                 hr = user?.role === 'hr';
             }
-            res.send({hr})
+            res.send({ hr })
         })
 
-        app.get('/allusers/HR',async(req,res)=>{
-            const query = {role: 'employee'};
-            const result =await usersCollection.find(query).toArray();
+        app.get('/allusers/HR/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await usersCollection.findOne(query);
             res.send(result)
         })
 
-        app.patch('/allusers/HR/:id',async(req,res)=>{
+        app.get('/allusers/HR', async (req, res) => {
+            const query = { role: 'employee' };
+            const result = await usersCollection.find(query).toArray();
+            res.send(result)
+        })
+
+        app.patch('/allusers/HR/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const user = await usersCollection.findOne(query);
             const updateDoc = {
                 $set: {
                     verified: user?.verified == false ? true : false
                 }
             }
-            const result = await usersCollection.updateOne(query,updateDoc);
+            const result = await usersCollection.updateOne(query, updateDoc);
             res.send(result)
+        })
+
+        //payment intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { salary } = req.body;
+            const amount = parseInt(salary * 100);
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        })
+
+        app.post('/payments',async(req,res)=>{
+            const payment = req.body;
+            const paymentResult = await paymentsCollection.insertOne(payment);
+            res.send(paymentResult);
         })
 
         // Send a ping to confirm a successful connection
