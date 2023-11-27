@@ -34,6 +34,18 @@ async function run() {
         const paymentsCollection = client.db('empowerPerformaDB').collection('payments');
 
         //user related api
+
+        app.get('/allusers/employee/:email',async(req,res)=>{
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            let employee = false;
+            if(user){
+                employee = user?.role === 'employee';
+            }
+            res.send({employee})
+        })
+
         app.post('/allusers', async (req, res) => {
             const user = req.body;
             const query = { email: user?.email };
