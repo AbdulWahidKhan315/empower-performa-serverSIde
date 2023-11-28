@@ -77,6 +77,11 @@ async function run() {
             res.send(result)
         })
 
+        app.get('/workSheets/HR',async(req,res)=>{
+            const result = await workSheetsCollection.find().toArray();
+            res.send(result);
+        })
+
         app.get('/allusers/HR', async (req, res) => {
             const query = { role: 'employee' };
             const result = await usersCollection.find(query).toArray();
