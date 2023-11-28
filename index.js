@@ -36,15 +36,15 @@ async function run() {
 
         //user related api
 
-        app.get('/allusers/employee/:email',async(req,res)=>{
+        app.get('/allusers/employee/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const user = await usersCollection.findOne(query);
             let employee = false;
-            if(user){
+            if (user) {
                 employee = user?.role === 'employee';
             }
-            res.send({employee})
+            res.send({ employee })
         })
 
         app.post('/allusers', async (req, res) => {
@@ -112,13 +112,13 @@ async function run() {
             });
         })
 
-        app.get('/payments/:email',async(req,res)=>{
-            const query = {email: req.params.email};
+        app.get('/payments/:email', async (req, res) => {
+            const query = { email: req.params.email };
             const result = await paymentsCollection.find(query).toArray();
             res.send(result)
         })
 
-        app.post('/payments',async(req,res)=>{
+        app.post('/payments', async (req, res) => {
             const payment = req.body;
             const paymentResult = await paymentsCollection.insertOne(payment);
             res.send(paymentResult);
@@ -126,17 +126,48 @@ async function run() {
 
         //works relate api
 
-        app.get('/works/:email',async(req,res)=>{
-            const query = {email: req.params.email};
+        app.get('/works/:email', async (req, res) => {
+            const query = { email: req.params.email };
             const result = await workSheetsCollection.find(query).toArray();
             res.send(result);
         })
 
-        app.post('/works',async(req,res)=>{
+        app.post('/works', async (req, res) => {
             const works = req.body;
             const workResult = await workSheetsCollection.insertOne(works);
             res.send(workResult);
         })
+
+        //admin related api
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            let admin = false;
+            if (user) {
+                admin = user?.role === 'admin';
+            }
+            res.send({ admin })
+        })
+
+        app.get('/allusers/admin', async (req, res) => {
+            const result = await usersCollection.find().toArray();
+            res.send(result);
+        })
+
+        app.patch('/admin/makeHR/:id',async(req,res)=>{
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)};
+            const updateDoc = {
+                $set: {
+                    role: 'hr',
+                    verified: false
+                }
+            }
+            const result = await usersCollection.updateOne(filter,updateDoc);
+            res.send(result)
+        })
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
