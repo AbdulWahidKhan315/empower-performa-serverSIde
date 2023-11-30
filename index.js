@@ -29,7 +29,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const usersCollection = client.db('empowerPerformaDB').collection('allUsers');
         const paymentsCollection = client.db('empowerPerformaDB').collection('payments');
@@ -41,7 +41,6 @@ async function run() {
             const query = {email: user?.email}
             const fired = await usersCollection.findOne(query);
             if(fired?.status){
-                console.log(fired?.status)
                 return res.status(401).send({ status: 401, message: 'fired user' });
             }
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
@@ -218,8 +217,8 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
