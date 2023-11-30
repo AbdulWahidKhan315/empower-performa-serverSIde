@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const cors = require('cors');
 const port = process.env.PORT || 5000;
@@ -14,7 +15,7 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.oiitlmi.mongodb.net/?retryWrites=true&w=majority`;
-console.log(uri)
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -34,9 +35,38 @@ async function run() {
         const paymentsCollection = client.db('empowerPerformaDB').collection('payments');
         const workSheetsCollection = client.db('empowerPerformaDB').collection('workSheets');
 
+        //jwt related api
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            const query = {email: user?.email}
+            const fired = await usersCollection.findOne(query);
+            if(fired?.status){
+                console.log(fired?.status)
+                return res.status(401).send({ status: 401, message: 'fired user' });
+            }
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+            res.send({ token });
+        })
+
+        //middleware
+        const verifyToken = (req, res, next) => {
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: 'unauthorized access' })
+            }
+
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: 'unauthorized access' })
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
         //user related api
 
-        app.get('/allusers/employee/:email', async (req, res) => {
+        app.get('/allusers/employee/:email',verifyToken, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const user = await usersCollection.findOne(query);
@@ -47,7 +77,7 @@ async function run() {
             res.send({ employee })
         })
 
-        app.post('/allusers', async (req, res) => {
+        app.post('/allusers',verifyToken, async (req, res) => {
             const user = req.body;
             const query = { email: user?.email };
             const existingUser = await usersCollection.findOne(query);
@@ -70,25 +100,25 @@ async function run() {
             res.send({ hr })
         })
 
-        app.get('/allusers/HR/:id', async (req, res) => {
+        app.get('/allusers/HR/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await usersCollection.findOne(query);
             res.send(result)
         })
 
-        app.get('/workSheets/HR',async(req,res)=>{
+        app.get('/workSheets/HR',verifyToken, async (req, res) => {
             const result = await workSheetsCollection.find().toArray();
             res.send(result);
         })
 
-        app.get('/allusers/HR', async (req, res) => {
+        app.get('/allusers/HR',verifyToken, async (req, res) => {
             const query = { role: 'employee' };
             const result = await usersCollection.find(query).toArray();
             res.send(result)
         })
 
-        app.patch('/allusers/HR/:id', async (req, res) => {
+        app.patch('/allusers/HR/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const user = await usersCollection.findOne(query);
@@ -117,7 +147,7 @@ async function run() {
             });
         })
 
-        app.get('/payments/:email', async (req, res) => {
+        app.get('/payments/:email',verifyToken, async (req, res) => {
             const query = { email: req.params.email };
             const result = await paymentsCollection.find(query).toArray();
             res.send(result)
@@ -131,13 +161,13 @@ async function run() {
 
         //works relate api
 
-        app.get('/works/:email', async (req, res) => {
+        app.get('/works/:email',verifyToken, async (req, res) => {
             const query = { email: req.params.email };
             const result = await workSheetsCollection.find(query).toArray();
             res.send(result);
         })
 
-        app.post('/works', async (req, res) => {
+        app.post('/works',verifyToken, async (req, res) => {
             const works = req.body;
             const workResult = await workSheetsCollection.insertOne(works);
             res.send(workResult);
@@ -155,34 +185,34 @@ async function run() {
             res.send({ admin })
         })
 
-        app.get('/allusers/admin', async (req, res) => {
+        app.get('/allusers/admin',verifyToken, async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result);
         })
 
-        app.patch('/admin/makeHR/:id',async(req,res)=>{
+        app.patch('/admin/makeHR/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
                     role: 'hr',
                     verified: false
                 }
             }
-            const result = await usersCollection.updateOne(filter,updateDoc);
+            const result = await usersCollection.updateOne(filter, updateDoc);
             res.send(result)
         })
 
-        app.put('/admin/makeFired/:id',async(req,res)=>{
+        app.put('/admin/makeFired/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)};
-            const options = {upsert: true};
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
             const updateDoc = {
                 $set: {
                     status: 'Fired'
                 }
             }
-            const result = usersCollection.updateOne(filter,updateDoc,options);
+            const result = usersCollection.updateOne(filter, updateDoc, options);
             res.send(result);
         })
 
